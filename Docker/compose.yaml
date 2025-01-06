@@ -1,0 +1,66 @@
+name: ispclients
+
+services:
+  # Application
+  phpfpm:
+    container_name: ispcl-php
+    build:
+      args:
+        user: ${PHP_USER}
+        uid: ${PHP_UID}
+        workdir: ${PHP_WORKDIR}
+      context: ./PHP
+    image: ispclients-php:1.0.0
+    volumes:
+      - ../:${PHP_WORKDIR}
+    environment:
+      DB_HOST: mariadb
+      DB_NAME: ${MARIADB_DATABASE}
+      DB_USER: ${MARIADB_USER}
+      DB_PASSWORD_FILE: /run/secrets/mariadb_password
+    secrets:
+      - mariadb_password
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+        restart: true
+    networks:
+      - ispcl-network
+  # Database
+  mariadb:
+    container_name: ispcl-mariadb
+    image: mariadb:11.4.2-noble
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/mariadb_root_password
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD_FILE: /run/secrets/mariadb_password
+    secrets:
+      - mariadb_root_password
+      - mariadb_password
+    volumes:
+      - type: volume
+        source: ispcl-db-data
+        target: /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 45s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ispcl-network
+
+secrets:
+  mariadb_root_password:
+    environment: MARIADB_ROOT_PASSWORD
+  mariadb_password:
+    environment: MARIADB_PASSWORD
+
+volumes:
+  ispcl-db-data:
+
+networks:
+  ispcl-network:

@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	zip \
 	&& apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN docker-php-ext-configure pdo_mysql && \
+	docker-php-ext-install -j$(nproc) pdo_mysql
+
 COPY --from=composer:2.8.4 /usr/bin/composer /usr/local/bin/composer
 
 RUN useradd -G www-data,root -u $uid -d /home/$user $user \
